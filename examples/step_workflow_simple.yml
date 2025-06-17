@@ -1,0 +1,160 @@
+version: "1.0"
+description: "Step-based workflow rules with before/after dependencies"
+
+rules:
+  # Step 1: Application validation
+  - id: "validate_loan_application"
+    description: "Validate basic loan application requirements"
+    tags: ["step_1", "validation", "loan"]
+    when:
+      type: "and"
+      conditions:
+        - type: "greater_than"
+          field: "credit_score"
+          value: 500
+        - type: "greater_than"
+          field: "annual_income"
+          value: 25000
+        - type: "less_than"
+          field: "debt_to_income_ratio"
+          value: 0.7
+    then:
+      outcome:
+        decision: "validation_passed"
+        step: "application_validation"
+        next_step: "credit_assessment"
+        validation_score: 85
+
+  # Step 2: Credit risk assessment (AFTER step 1 passes)
+  - id: "assess_credit_risk_step"
+    description: "Assess credit risk after validation"
+    tags: ["step_2", "credit", "loan"]
+    when:
+      type: "and"
+      conditions:
+        # Before rule: validation must have passed
+        - type: "equals"
+          field: "previous_step_result"
+          value: "validation_passed"
+        - type: "greater_than"
+          field: "credit_score"
+          value: 650
+        - type: "less_than"
+          field: "late_payments_count"
+          value: 3
+    then:
+      outcome:
+        decision: "low_risk_approved"
+        step: "credit_assessment"
+        risk_level: "low"
+        interest_rate: 4.5
+        next_step: "income_verification"
+
+  # Step 3: Income verification (AFTER credit assessment)
+  - id: "verify_income_step"
+    description: "Verify customer income documentation"
+    tags: ["step_3", "income", "loan"]
+    when:
+      type: "and"
+      conditions:
+        # Before rule: credit assessment must show low risk
+        - type: "equals"
+          field: "previous_step_result"
+          value: "low_risk_approved"
+        - type: "equals"
+          field: "income_documents_provided"
+          value: true
+        - type: "greater_than"
+          field: "verified_income_ratio"
+          value: 0.8
+    then:
+      outcome:
+        decision: "income_verified"
+        step: "income_verification"
+        verification_status: "complete"
+        next_step: "final_approval"
+
+  # Step 4: Final approval (AFTER all previous steps)
+  - id: "final_loan_approval_step"
+    description: "Final loan approval after all checks"
+    tags: ["step_4", "approval", "loan"]
+    when:
+      type: "and"
+      conditions:
+        # Before rule: income must be verified
+        - type: "equals"
+          field: "previous_step_result"
+          value: "income_verified"
+        - type: "less_than"
+          field: "loan_amount"
+          value: 500000
+        - type: "less_than"
+          field: "loan_to_income_ratio"
+          value: 5.0
+    then:
+      outcome:
+        decision: "loan_approved"
+        step: "final_approval"
+        approval_amount: "{{ loan_amount }}"
+        final_rate: 4.5
+        # After rule: trigger account setup
+        trigger_after_rule: "setup_loan_account"
+
+  # After rule: Account setup (AFTER loan approval)
+  - id: "setup_loan_account"
+    description: "Setup loan account after approval"
+    tags: ["after_rule", "account", "loan"]
+    when:
+      type: "equals"
+      field: "trigger_after_rule"
+      value: "setup_loan_account"
+    then:
+      outcome:
+        decision: "account_created"
+        step: "post_approval"
+        account_number: "LN{{ timestamp }}"
+        first_payment_due: "30_days"
+
+  # Alternative path: Manual review for medium risk
+  - id: "manual_review_required"
+    description: "Route to manual review for medium risk cases"
+    tags: ["alternative", "manual_review", "loan"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "previous_step_result"
+          value: "validation_passed"
+        - type: "range"
+          field: "credit_score"
+          min: 580
+          max: 649
+    then:
+      outcome:
+        decision: "manual_review_required"
+        step: "manual_underwriting"
+        review_type: "credit_specialist"
+        estimated_days: 3
+
+  # Rejection handling
+  - id: "application_rejected"
+    description: "Handle application rejection"
+    tags: ["rejection", "final", "loan"]
+    when:
+      type: "or"
+      conditions:
+        - type: "less_than"
+          field: "credit_score"
+          value: 500
+        - type: "greater_than"
+          field: "debt_to_income_ratio"
+          value: 0.7
+        - type: "equals"
+          field: "fraud_flag"
+          value: true
+    then:
+      outcome:
+        decision: "application_rejected"
+        step: "rejection"
+        rejection_reason: "does_not_meet_criteria"
+        appeal_available: true

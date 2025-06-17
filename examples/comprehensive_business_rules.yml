@@ -1,0 +1,221 @@
+rules:
+  # E-commerce Discount Rules
+  - id: "premium_customer_high_value"
+    description: "Premium customers get 15% discount on orders over $200"
+    severity: "high"
+    tags: ["ecommerce", "discount", "premium"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "customer_tier"
+          value: "premium"
+        - type: "greater_than"
+          field: "order_total"
+          value: 200
+    then:
+      outcome:
+        decision: "approve_discount"
+        discount_percent: 15
+        reason: "Premium customer high-value order discount"
+
+  - id: "bulk_quantity_discount"
+    description: "Orders with 25+ items get 8% bulk discount"
+    severity: "medium"
+    tags: ["ecommerce", "discount", "bulk"]
+    when:
+      type: "greater_than"
+      field: "item_count"
+      value: 25
+    then:
+      outcome:
+        decision: "approve_discount"
+        discount_percent: 8
+        reason: "Bulk quantity discount"
+
+  # Financial Risk Management Rules
+  - id: "high_value_transaction_review"
+    description: "Transactions over $10,000 require manual review"
+    severity: "critical"
+    tags: ["finance", "risk", "review"]
+    when:
+      type: "greater_than"
+      field: "transaction_amount"
+      value: 10000
+    then:
+      outcome:
+        decision: "require_manual_review"
+        escalation_level: "tier_2"
+        max_processing_hours: 48
+        reason: "High-value transaction exceeds automated approval threshold"
+
+  - id: "suspicious_activity_detection"
+    description: "Block transactions with multiple risk indicators"
+    severity: "critical"
+    tags: ["finance", "fraud", "security"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "is_new_location"
+          value: true
+        - type: "greater_than"
+          field: "risk_score"
+          value: 80
+        - type: "greater_than"
+          field: "daily_transaction_count"
+          value: 5
+    then:
+      outcome:
+        decision: "block_transaction"
+        require_verification: true
+        notify_fraud_team: true
+        reason: "Suspicious activity pattern detected"
+
+  # Insurance Claims Processing Rules
+  - id: "auto_approve_minor_claims"
+    description: "Auto-approve claims under $1000 with clean history"
+    severity: "low"
+    tags: ["insurance", "claims", "auto_approve"]
+    when:
+      type: "and"
+      conditions:
+        - type: "less_than"
+          field: "claim_amount"
+          value: 1000
+        - type: "equals"
+          field: "customer_fraud_history"
+          value: false
+        - type: "less_than"
+          field: "claims_last_12_months"
+          value: 3
+    then:
+      outcome:
+        decision: "auto_approve"
+        processing_time_hours: 2
+        payment_method: "direct_deposit"
+        reason: "Minor claim with clean customer history"
+
+  - id: "medical_claim_specialist_review"
+    description: "Medical claims over $5000 need specialist review"
+    severity: "high"
+    tags: ["insurance", "medical", "specialist"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "claim_type"
+          value: "medical"
+        - type: "greater_than"
+          field: "claim_amount"
+          value: 5000
+    then:
+      outcome:
+        decision: "require_specialist_review"
+        assigned_department: "medical_claims"
+        max_review_days: 14
+        documentation_required: ["medical_records", "physician_statement"]
+        reason: "High-value medical claim requires expert assessment"
+
+  # Loan Approval Rules
+  - id: "prime_customer_fast_track"
+    description: "Excellent credit customers get fast-track approval"
+    severity: "high"
+    tags: ["lending", "approval", "fast_track"]
+    when:
+      type: "and"
+      conditions:
+        - type: "greater_than"
+          field: "credit_score"
+          value: 750
+        - type: "greater_than"
+          field: "annual_income"
+          value: 100000
+        - type: "less_than"
+          field: "debt_to_income_ratio"
+          value: 0.3
+    then:
+      outcome:
+        decision: "approve"
+        interest_rate: 3.25
+        processing_time_hours: 24
+        approval_level: "automated"
+        reason: "Prime customer with excellent credit profile"
+
+  - id: "manual_underwriter_review"
+    description: "Borderline applications require manual review"
+    severity: "medium"
+    tags: ["lending", "manual_review", "underwriter"]
+    when:
+      type: "and"
+      conditions:
+        - type: "greater_than"
+          field: "credit_score"
+          value: 620
+        - type: "less_than"
+          field: "credit_score"
+          value: 700
+        - type: "greater_than"
+          field: "debt_to_income_ratio"
+          value: 0.4
+    then:
+      outcome:
+        decision: "manual_review"
+        assigned_underwriter: true
+        additional_documentation: ["tax_returns", "bank_statements"]
+        max_review_days: 7
+        reason: "Borderline credit profile requires human assessment"
+
+  # Supply Chain Management Rules
+  - id: "critical_inventory_reorder"
+    description: "Auto-reorder critical items when stock is low"
+    severity: "high"
+    tags: ["supply_chain", "inventory", "reorder"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "item_criticality"
+          value: "critical"
+        - type: "less_than"
+          field: "current_stock"
+          value: 10
+        - type: "greater_than"
+          field: "weekly_demand"
+          value: 5
+    then:
+      outcome:
+        decision: "auto_reorder"
+        order_quantity: 100
+        priority_level: "urgent"
+        supplier_notification: true
+        reason: "Critical inventory below safety threshold"
+
+  # Customer Service Escalation Rules
+  - id: "vip_customer_priority_support"
+    description: "VIP customers get immediate priority support"
+    severity: "high"
+    tags: ["customer_service", "vip", "priority"]
+    when:
+      type: "or"
+      conditions:
+        - type: "equals"
+          field: "customer_tier"
+          value: "vip"
+        - type: "greater_than"
+          field: "annual_revenue"
+          value: 50000
+    then:
+      outcome:
+        decision: "escalate_to_priority_queue"
+        max_response_minutes: 15
+        assigned_agent_level: "senior"
+        priority_level: "high"
+        reason: "VIP customer requires priority handling"
+
+version: "1.0"
+metadata:
+  created_by: "logicbridge_system"
+  description: "Comprehensive business rules covering multiple domains"
+  domains: ["ecommerce", "finance", "insurance", "lending", "supply_chain", "customer_service"]
+  last_updated: "2024-12-09"

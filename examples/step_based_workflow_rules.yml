@@ -1,0 +1,242 @@
+version: "1.0"
+description: "Step-based workflow rules with before/after dependencies"
+
+rules:
+  # Step 1: Initial validation
+  - id: "validate_application"
+    description: "Validate basic application requirements"
+    tags: ["validation", "step_1", "loan_process"]
+    when:
+      type: "and"
+      conditions:
+        - type: "greater_than"
+          field: "credit_score"
+          value: 500
+        - type: "greater_than"
+          field: "annual_income"
+          value: 20000
+        - type: "less_than"
+          field: "debt_to_income_ratio"
+          value: 0.8
+    then:
+      outcome:
+        decision: "pass"
+        validation_stage: "basic_requirements_met"
+        next_step: "credit_assessment"
+
+  # Step 2: Credit assessment (depends on validation)
+  - id: "assess_credit_risk"
+    description: "Assess credit risk based on score and history"
+    tags: ["credit", "step_2", "loan_process"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "step_validate_application_result.decision"
+          value: "pass"
+        - type: "greater_than"
+          field: "credit_score"
+          value: 650
+        - type: "less_than"
+          field: "late_payments_12_months"
+          value: 3
+    then:
+      outcome:
+        decision: "low_risk"
+        risk_category: "acceptable"
+        interest_rate_modifier: 0.0
+        next_step: "income_verification"
+
+  # Alternative credit path for medium risk
+  - id: "assess_medium_credit_risk"
+    description: "Medium risk credit assessment"
+    tags: ["credit", "step_2", "loan_process"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "step_validate_application_result.decision"
+          value: "pass"
+        - type: "range"
+          field: "credit_score"
+          min: 580
+          max: 649
+    then:
+      outcome:
+        decision: "medium_risk"
+        risk_category: "review_required"
+        interest_rate_modifier: 1.5
+        requires_manual_review: true
+        next_step: "manual_underwriting"
+
+  # Step 3: Income verification
+  - id: "verify_income"
+    description: "Verify stated income against documentation"
+    tags: ["income", "step_3", "loan_process"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "step_assess_credit_risk_result.decision"
+          value: "low_risk"
+        - type: "equals"
+          field: "income_documentation_provided"
+          value: true
+        - type: "greater_than"
+          field: "verified_income_ratio"
+          value: 0.8
+    then:
+      outcome:
+        decision: "verified"
+        income_status: "confirmed"
+        loan_to_income_ratio: "{{ loan_amount / annual_income }}"
+        next_step: "final_approval"
+
+  # Step 4: Final approval
+  - id: "final_loan_approval"
+    description: "Final loan approval decision"
+    tags: ["approval", "step_4", "loan_process"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "step_verify_income_result.decision"
+          value: "verified"
+        - type: "less_than"
+          field: "step_verify_income_result.loan_to_income_ratio"
+          value: 4.0
+        - type: "less_than"
+          field: "loan_amount"
+          value: 500000
+    then:
+      outcome:
+        decision: "approve"
+        loan_status: "approved"
+        final_interest_rate: "{{ base_rate + step_assess_credit_risk_result.interest_rate_modifier }}"
+        approval_amount: "{{ loan_amount }}"
+        conditions: ["income_verified", "credit_acceptable"]
+
+  # Alternative path: Manual underwriting
+  - id: "manual_underwriting_required"
+    description: "Route to manual underwriting for complex cases"
+    tags: ["manual", "underwriting", "loan_process"]
+    when:
+      type: "or"
+      conditions:
+        - type: "equals"
+          field: "step_assess_medium_credit_risk_result.requires_manual_review"
+          value: true
+        - type: "greater_than"
+          field: "loan_amount"
+          value: 500000
+        - type: "equals"
+          field: "self_employed"
+          value: true
+    then:
+      outcome:
+        decision: "manual_review"
+        review_type: "underwriter_required"
+        priority: "high"
+        estimated_processing_days: 5
+        required_documents: ["tax_returns", "bank_statements", "employment_verification"]
+
+  # Fraud detection (runs in parallel with other steps)
+  - id: "fraud_screening"
+    description: "Screen application for fraud indicators"
+    tags: ["fraud", "security", "parallel"]
+    when:
+      type: "or"
+      conditions:
+        - type: "greater_than"
+          field: "application_velocity_score"
+          value: 0.8
+        - type: "equals"
+          field: "identity_verification_failed"
+          value: true
+        - type: "contains"
+          field: "ip_address"
+          value: "suspicious_range"
+    then:
+      outcome:
+        decision: "fraud_risk"
+        security_flag: true
+        requires_investigation: true
+        block_processing: true
+
+  # Post-approval actions
+  - id: "setup_loan_account"
+    description: "Setup loan account after approval"
+    tags: ["post_approval", "account_setup"]
+    when:
+      type: "equals"
+      field: "step_final_loan_approval_result.decision"
+      value: "approve"
+    then:
+      outcome:
+        decision: "account_created"
+        account_number: "{{ generate_account_number() }}"
+        first_payment_date: "{{ add_days(approval_date, 30) }}"
+        payment_amount: "{{ calculate_monthly_payment() }}"
+
+  # Rejection handling
+  - id: "application_rejection"
+    description: "Handle application rejection with reasons"
+    tags: ["rejection", "final"]
+    when:
+      type: "or"
+      conditions:
+        - type: "equals"
+          field: "step_validate_application_result.decision"
+          value: "fail"
+        - type: "equals"
+          field: "step_fraud_screening_result.block_processing"
+          value: true
+    then:
+      outcome:
+        decision: "reject"
+        rejection_reasons: "{{ collect_rejection_reasons() }}"
+        appeal_process_available: true
+        reapplication_waiting_period_days: 30
+
+  # Compliance checks (before final approval)
+  - id: "compliance_verification"
+    description: "Final compliance and regulatory checks"
+    tags: ["compliance", "regulatory", "before_approval"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "step_verify_income_result.decision"
+          value: "verified"
+        - type: "not_equals"
+          field: "step_fraud_screening_result.security_flag"
+          value: true
+    then:
+      outcome:
+        decision: "compliant"
+        kyc_status: "verified"
+        aml_screening: "passed"
+        regulatory_flags: []
+
+  # Premium customer fast track
+  - id: "premium_customer_fast_track"
+    description: "Fast track processing for premium customers"
+    tags: ["premium", "fast_track"]
+    when:
+      type: "and"
+      conditions:
+        - type: "equals"
+          field: "customer_tier"
+          value: "premium"
+        - type: "greater_than"
+          field: "credit_score"
+          value: 750
+        - type: "less_than"
+          field: "loan_amount"
+          value: 300000
+    then:
+      outcome:
+        decision: "fast_track_approve"
+        processing_time_hours: 2
+        interest_rate_discount: 0.25
+        premium_benefits: ["priority_support", "flexible_terms"]
