@@ -63,9 +63,6 @@ Before making changes, create an issue to discuss:
 
 ```bash
 # Fork the repository on GitHub
-# Clone your fork
-git clone https://github.com/yourusername/newton-rs.git
-cd newton-rs
 
 # Create feature branch
 git checkout -b feature/your-feature-name
@@ -206,13 +203,6 @@ Supporting information or examples
 
 ## Security
 
-### Reporting Security Issues
-
-For security vulnerabilities:
-- DO NOT create public issues
-- Email security@newton-rs.com
-- Include detailed reproduction steps
-- Allow time for investigation and patching
 
 ### Security Guidelines
 
@@ -242,7 +232,7 @@ Newton.RS follows semantic versioning (SemVer):
 
 - GitHub Issues: Bug reports and feature requests
 - GitHub Discussions: Questions and general discussion
-- Email: project-maintainers@newton-rs.com
+
 
 ### Code of Conduct
 
