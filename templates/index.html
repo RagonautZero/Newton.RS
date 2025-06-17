@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogicBridge Rule Engine</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-cogs me-2"></i>
+                LogicBridge Rule Engine
+            </span>
+            <small class="text-light">v1.0.0</small>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Status Panel -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Engine Status
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="status-content">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Tabs -->
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="ruleset-tab" data-bs-toggle="tab" data-bs-target="#ruleset" type="button" role="tab">
+                    <i class="fas fa-upload me-2"></i>Upload Ruleset
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="evaluate-tab" data-bs-toggle="tab" data-bs-target="#evaluate" type="button" role="tab">
+                    <i class="fas fa-play me-2"></i>Evaluate Rules
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="audit-tab" data-bs-toggle="tab" data-bs-target="#audit" type="button" role="tab">
+                    <i class="fas fa-history me-2"></i>Audit Log
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+            <!-- Ruleset Upload Tab -->
+            <div class="tab-pane fade show active" id="ruleset" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Upload Ruleset</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="ruleset-form">
+                            <div class="mb-3">
+                                <label for="rulesetFile" class="form-label">Choose Ruleset File</label>
+                                <input type="file" class="form-control" id="rulesetFile" accept=".yml,.yaml,.json">
+                                <div class="form-text">Upload YAML (.yml, .yaml) or JSON (.json) ruleset files</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rulesetContent" class="form-label">Or Paste Ruleset Content</label>
+                                <textarea class="form-control font-monospace" id="rulesetContent" rows="10" placeholder="Paste your YAML or JSON ruleset here..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rulesetFormat" class="form-label">Format</label>
+                                <select class="form-select" id="rulesetFormat">
+                                    <option value="yaml" selected>YAML</option>
+                                    <option value="json">JSON</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-2"></i>Upload Ruleset
+                            </button>
+                        </form>
+                        <div id="ruleset-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rule Evaluation Tab -->
+            <div class="tab-pane fade" id="evaluate" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Evaluate Payload</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="evaluate-form">
+                            <div class="mb-3">
+                                <label for="payloadContent" class="form-label">Payload (JSON)</label>
+                                <textarea class="form-control font-monospace" id="payloadContent" rows="8" placeholder='{"customer_tier": "premium", "order_total": 150}'></textarea>
+                                <div class="form-text">Enter the data payload to evaluate against loaded rules</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="batchMode">
+                                    <label class="form-check-label" for="batchMode">
+                                        Batch Mode (payload should be an array of objects)
+                                    </label>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-play me-2"></i>Evaluate
+                            </button>
+                        </form>
+                        <div id="evaluate-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audit Log Tab -->
+            <div class="tab-pane fade" id="audit" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Audit Log</h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadAuditLog()">
+                            <i class="fas fa-refresh me-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="audit-content">
+                            <div class="text-center">
+                                <button class="btn btn-primary" onclick="loadAuditLog()">
+                                    <i class="fas fa-history me-2"></i>Load Audit Log
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Examples Section -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Quick Examples
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Sample Ruleset (YAML)</h6>
+                                <button class="btn btn-sm btn-outline-secondary mb-2" onclick="loadSampleRuleset()">
+                                    Load Sample Ruleset
+                                </button>
+                                <pre class="bg-light p-2 small"><code>rules:
+  - id: "premium_discount"
+    description: "Premium customers get discount"
+    when:
+      type: "equals"
+      field: "customer_tier"
+      value: "premium"
+    then:
+      outcome:
+        decision: "approve_discount"
+        discount_percent: 10</code></pre>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Sample Payload (JSON)</h6>
+                                <button class="btn btn-sm btn-outline-secondary mb-2" onclick="loadSamplePayload()">
+                                    Load Sample Payload
+                                </button>
+                                <pre class="bg-light p-2 small"><code>{
+  "customer_tier": "premium",
+  "order_total": 150,
+  "item_count": 3,
+  "is_first_order": false
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-5 py-4 bg-light text-center">
+        <div class="container">
+            <small class="text-muted">
+                LogicBridge Rule Engine v1.0.0 | 
+                <a href="#" class="text-decoration-none">Documentation</a> | 
+                <a href="#" class="text-decoration-none">API Reference</a>
+            </small>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
